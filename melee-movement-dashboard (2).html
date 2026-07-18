@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0a0c10">
+<title>Ground Movement Analysis — Frame Data Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0c10;
+    --panel:#12151c;
+    --panel2:#171b24;
+    --border:#232836;
+    --text:#d8dde6;
+    --text-dim:#6b7280;
+    --magenta:#ff3e6c;
+    --cyan:#4ce0d2;
+    --amber:#f5a623;
+  }
+  *{box-sizing:border-box;}
+  html{background:#0a0c10;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(ellipse at top left, #10131a 0%, #0a0c10 55%),
+      repeating-linear-gradient(180deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 3px);
+    color:var(--text);
+    font-family:'JetBrains Mono', monospace;
+    min-height:100vh;
+    padding:0 0 60px;
+  }
+  header{
+    padding:28px 24px 20px;
+    border-bottom:1px solid var(--border);
+    position:relative;
+  }
+  header::after{
+    content:"";
+    position:absolute; left:0; right:0; bottom:-1px; height:2px;
+    background:linear-gradient(90deg, var(--magenta), transparent 40%, var(--cyan) 80%, transparent);
+    opacity:.7;
+  }
+  .eyebrow{
+    font-size:11px; letter-spacing:.24em; color:var(--cyan); text-transform:uppercase;
+    margin-bottom:8px; font-weight:500;
+  }
+  h1{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700;
+    font-size:clamp(24px,4vw,38px);
+    margin:0 0 6px;
+    letter-spacing:-0.01em;
+  }
+  h1 span{color:var(--magenta);}
+  .credit{
+    font-size:11.5px; color:var(--text-dim); max-width:640px; line-height:1.5;
+  }
+
+  .wrap{max-width:1180px; margin:0 auto; padding:0 24px;}
+
+  .picker{margin-top:26px;}
+  .picker-label{font-size:11px; letter-spacing:.18em; color:var(--text-dim); text-transform:uppercase; margin-bottom:10px;}
+
+  .picker-tabs{display:flex; gap:6px; margin-bottom:12px;}
+  .picker-tab{
+    background:var(--panel); border:1px solid var(--border); color:var(--text-dim);
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:11.5px;
+    letter-spacing:.1em; text-transform:uppercase;
+    padding:9px 16px; border-radius:4px; cursor:pointer;
+  }
+  .picker-tab:hover{color:var(--text);}
+  .picker-tab.active{
+    color:#fff; border-color:var(--cyan);
+    background:linear-gradient(180deg, rgba(76,224,210,.14), rgba(76,224,210,.03));
+    box-shadow:0 0 0 1px rgba(76,224,210,.25) inset;
+  }
+
+
+
+  .char-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(96px,1fr));
+    gap:6px;
+  }
+  .char-btn{
+    background:var(--panel);
+    border:1px solid var(--border);
+    color:var(--text-dim);
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    padding:9px 6px;
+    border-radius:3px;
+    cursor:pointer;
+    text-align:center;
+    transition:.12s;
+    letter-spacing:.02em;
+  }
+  .char-btn:hover{border-color:var(--cyan); color:var(--cyan);}
+  .char-btn.active{
+    background:linear-gradient(180deg, rgba(255,62,108,.16), rgba(255,62,108,.05));
+    border-color:var(--magenta);
+    color:#fff;
+    box-shadow:0 0 0 1px rgba(255,62,108,.25) inset;
+  }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    padding:26px;
+    border-radius:6px;
+    margin-top:26px;
+  }
+  .grid2{
+    display:grid; grid-template-columns:1.05fr 1.45fr; gap:28px;
+  }
+  @media(max-width:820px){.grid2{grid-template-columns:1fr;}}
+
+  .readout-title{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:16px;
+    color:#fff; margin:0 0 4px;
+  }
+  .readout-sub{font-size:11px; color:var(--text-dim); margin-bottom:16px; line-height:1.5;}
+
+  .section-label{
+    font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--amber);
+    margin:18px 0 4px; opacity:.85;
+  }
+  .section-label:first-of-type{margin-top:2px;}
+  .section-note{font-size:10.5px; color:var(--text-dim); margin:-2px 0 6px; line-height:1.5;}
+
+  .section-label.collapsible{
+    display:flex; justify-content:space-between; align-items:center;
+    cursor:pointer; padding:4px 0; opacity:1; -webkit-tap-highlight-color:transparent;
+  }
+  .section-label.collapsible .chevron{color:var(--text-dim); font-size:10px; letter-spacing:0;}
+  .section-body.tree{
+    padding-left:12px; margin-left:2px; border-left:1px solid var(--border);
+  }
+  .tree-toggle-all{
+    display:inline-block; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--cyan); border:1px solid var(--border); border-radius:4px;
+    padding:6px 12px; margin-bottom:10px; cursor:pointer; -webkit-tap-highlight-color:transparent;
+  }
+  .tree-toggle-all:active{background:rgba(76,224,210,.08);}
+
+  .metric{
+    display:flex; justify-content:space-between; align-items:baseline;
+    padding:9px 8px; border-bottom:1px dashed var(--border);
+    cursor:pointer; border-radius:3px; margin:0 -8px;
+  }
+  .metric:hover{background:rgba(255,255,255,.03);}
+  .metric:last-child{border-bottom:none;}
+  .metric .k{font-size:12px; color:var(--text-dim);}
+  .metric .v{font-size:15.5px; color:var(--cyan); font-weight:700;}
+  .metric .unit{font-size:10px; color:var(--text-dim); margin-left:4px; font-weight:400;}
+  .metric .rank-badge{
+    font-size:9.5px; color:var(--text-dim); font-weight:700; margin-left:8px;
+    border:1px solid var(--border); border-radius:10px; padding:1px 6px;
+  }
+  .metric .rank-badge{vertical-align:middle;}
+  .chart-tabs{display:flex; gap:6px; margin-bottom:14px;}
+  .chart-tab{
+    background:var(--panel2); border:1px solid var(--border); color:var(--text-dim);
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:11.5px;
+    min-width:32px; padding:6px 10px; border-radius:4px; cursor:pointer; text-align:center;
+  }
+  .chart-tab:hover{color:var(--text);}
+  .chart-tab.active{
+    color:#fff; border-color:var(--magenta);
+    background:linear-gradient(180deg, rgba(255,62,108,.14), rgba(255,62,108,.03));
+    box-shadow:0 0 0 1px rgba(255,62,108,.25) inset;
+  }
+
+  .stat-row{
+    display:flex; justify-content:space-between; align-items:baseline;
+    padding:9px 8px; border-bottom:1px dashed var(--border);
+  }
+  .stat-row:last-child{border-bottom:none;}
+  .stat-row .k{font-size:12px; color:var(--text-dim);}
+  .stat-row .v{font-size:15.5px; font-weight:700;}
+  .stat-row .unit{font-size:10px; color:var(--text-dim); margin-left:6px; font-weight:400;}
+  .radar-node{cursor:pointer;}
+  .radar-node:hover .radar-dot{r:5.5; fill:#4ce0d2;}
+  .radar-node:hover text{opacity:.85;}
+  .stat-row.radar-node:hover{background:rgba(255,255,255,.03);}
+  .stat-row.active{background:rgba(76,224,210,.08); box-shadow:-2px 0 0 var(--cyan) inset; border-radius:3px; margin:0 -8px; padding-left:16px; padding-right:8px;}
+  .stat-row.active .k{color:#fff;}
+  .metric.active{background:rgba(255,62,108,.09); box-shadow:-2px 0 0 var(--magenta) inset;}
+  .metric.active .k{color:#fff;}
+  .metric.active .v{color:var(--magenta);}
+
+  .lb-title{font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--text-dim); margin-bottom:14px;}
+  .lb-row{
+    display:grid; grid-template-columns:24px 100px 1fr 96px; gap:10px; align-items:center;
+    padding:4px 0; font-size:12px;
+  }
+  .lb-rank{color:var(--text-dim); font-size:11px;}
+  .lb-name{color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer;}
+  .lb-name:hover{color:var(--cyan); text-decoration:underline;}
+  .lb-bar-track{height:14px; position:relative; background:rgba(255,255,255,.03); border-radius:2px;}
+  .lb-bar{
+    height:100%; border-radius:2px; background:linear-gradient(90deg, var(--cyan), rgba(76,224,210,.5));
+  }
+  .lb-row.selected .lb-bar{background:linear-gradient(90deg, var(--magenta), rgba(255,62,108,.55));}
+  .lb-row.selected .lb-name{color:var(--magenta); font-weight:700;}
+  .lb-val{
+    color:var(--text-dim); text-align:right; font-size:11.5px;
+    white-space:nowrap; font-variant-numeric:tabular-nums;
+  }
+
+  .note{font-size:10.5px; color:var(--text-dim); margin-top:14px; line-height:1.6;}
+
+  footer{
+    max-width:1180px; margin:40px auto 0; padding:0 24px; font-size:11px; color:var(--text-dim); line-height:1.6;
+  }
+
+  /* ---------- mobile ---------- */
+  @media(max-width:600px){
+    body{padding-bottom:40px;}
+    header{padding:20px 16px 16px;}
+    .eyebrow{font-size:10px; margin-bottom:6px;}
+    h1{font-size:26px;}
+    .credit{font-size:11px; line-height:1.5;}
+
+    .wrap{padding:0 16px;}
+
+    .picker{margin-top:20px;}
+    .picker-tabs{gap:5px;}
+    .picker-tab{flex:1; padding:11px 8px; font-size:10.5px; text-align:center;}
+
+    .char-grid{grid-template-columns:repeat(auto-fill,minmax(74px,1fr)); gap:5px;}
+    .char-btn{font-size:11px; padding:10px 5px;}
+
+    .panel{padding:16px 14px; margin-top:18px; border-radius:8px;}
+    .grid2{gap:22px;}
+
+    .readout-title{font-size:15px;}
+    .readout-sub{font-size:10.5px; margin-bottom:12px;}
+
+    .section-label{font-size:10px; margin:14px 0 3px;}
+    .section-note{font-size:10px;}
+
+    .metric, .stat-row{padding:11px 6px; margin:0 -6px;}
+    .metric .k, .stat-row .k{font-size:11.5px;}
+    .metric .v{font-size:15px;}
+    .stat-row .v{font-size:15px;}
+    .rank-badge{font-size:9px; padding:1px 5px;}
+
+    .chart-tabs{margin-bottom:12px;}
+    .chart-tab{min-width:38px; padding:8px 12px; font-size:12px;}
+
+    .lb-title{font-size:10px; margin-bottom:10px;}
+    .lb-row{
+      grid-template-columns:18px 1fr auto; grid-template-areas:"rank name val" "rank bar bar";
+      row-gap:3px; gap:6px 8px; padding:7px 0;
+    }
+    .lb-rank{grid-area:rank;}
+    .lb-name{grid-area:name; font-size:12.5px;}
+    .lb-val{grid-area:val; font-size:11px;}
+    .lb-bar-track{grid-area:bar; height:10px;}
+
+    .grid2.prop-mobile > div:first-child{order:2;}
+    .grid2.prop-mobile > div:last-child{order:1;}
+    .grid2.char-mobile > div:first-child{order:2;}
+    .grid2.char-mobile > div:last-child{order:1;}
+
+    footer{padding:0 16px; font-size:10px; margin-top:28px;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="eyebrow">Melee &middot; Ground Movement</div>
+    <h1>Frame Data <span>Console</span></h1>
+    <div class="credit">
+      Interactive re-implementation of the ground-movement velocity formulas (dash, foxtrot, wavedash, dash dance)
+      from schmooblidon's "Ultimate Ground Movement Analysis" thread on smashboards.com. Character constants
+      come from that thread's reference tables; dash, foxtrot, wavedash, and dash dance figures are computed
+      live from those constants using the same per-frame formulas. Extended dash dance figures are sourced
+      directly from the thread's published tables. Click any property on the left to rank all 26 characters
+      by it on the right.
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="picker">
+    <div class="picker-tabs" id="pickerTabs"></div>
+    <div id="pickerBody"></div>
+  </div>
+
+  <div class="panel" id="panel"></div>
+
+</div>
+
+<footer>
+  Melee-metre (Mm) ≈ half a foot. Perfect waveland airdodge v = 2.79000 &nbsp;|&nbsp; Max angle v = 2.67039 &nbsp;|&nbsp; Diagonal notch v = 1.97283.
+  Sheik, Marth, Link, DK, Roy and Bowser wavedash figures are corrected for their non-standard airdodge trajectory (−0.5×w on max angle / diagonal notch).
+</footer>
+
+<script>
+const SPECIAL_WD = new Set(['sheik','marth','link','dk','roy','bowser']);
+
+const CHAR_DATA = [
+ {key:'fox',name:'Fox',dx:11,dy:21,du:2.02,dv:2.2,da:0.12,t:0.08,maxwalk:1.6,j:3,rollf:33.6,rollb:33.6,rf:33,dtu:1.9,extDD:[37.62,1.79143]},
+ {key:'falco',name:'Falco',dx:11,dy:21,du:1.82,dv:1.5,da:0.12,t:0.08,maxwalk:1.4,j:5,rollf:38.5,rollb:38.5,rf:33,dtu:1.9,extDD:[25.505,1.21452]},
+ {key:'sheik',name:'Sheik',dx:7,dy:21,du:1.8,dv:1.8,da:0.12,t:0.08,maxwalk:1.2,j:3,rollf:40.04565,rollb:37.71997,rf:33,dtu:1.7,extDD:[27.05,1.28810]},
+ {key:'marth',name:'Marth',dx:15,dy:27,du:1.56,dv:1.8,da:0.06,t:0.06,maxwalk:1.6,j:4,rollf:40.23051,rollb:40.19798,rf:37,dtu:1.5,extDD:[31.08,1.48000]},
+ {key:'jigglypuff',name:'Jigglypuff',dx:12,dy:23,du:1.31,dv:1.1,da:0.085,t:0.09,maxwalk:0.7,j:5,rollf:32.90277,rollb:32.89497,rf:36,dtu:1.4,extDD:[18.015,0.85786]},
+ {key:'peach',name:'Peach',dx:15,dy:21,du:1.3,dv:1.3,da:0.12,t:0.1,maxwalk:0.85,j:5,rollf:30.31844,rollb:29.52969,rf:33,dtu:1.2,extDD:[23.32,1.11048]},
+ {key:'falcon',name:'Capt. Falcon',dx:15,dy:28,du:2.16,dv:2.30,da:0.16,t:0.08,maxwalk:0.85,j:4,rollf:33.95093,rollb:33.86285,rf:33,dtu:2.0,extDD:[42.11,2.00524]},
+ {key:'ics',name:'Ice Climbers',dx:13,dy:21,du:1.4,dv:1.4,da:0.07,t:0.035,maxwalk:0.95,j:3,rollf:34.49494,rollb:34.5,rf:33,dtu:1.4,extDD:[25.78625,1.22792]},
+ {key:'pikachu',name:'Pikachu',dx:13,dy:22,du:1.8,dv:1.8,da:0.1,t:0.09,maxwalk:1.24,j:3,rollf:36.67236,rollb:33.3,rf:33,dtu:1.8,extDD:[31.98,1.52286]},
+ {key:'drmario',name:'Dr. Mario',dx:10,dy:21,du:1.5,dv:1.5,da:0.08,t:0.06,maxwalk:1.1,j:4,rollf:33.00137,rollb:33,rf:33,dtu:1.5,extDD:[25.44,1.21143]},
+ {key:'mario',name:'Mario',dx:10,dy:21,du:1.5,dv:1.5,da:0.08,t:0.06,maxwalk:1.1,j:4,rollf:33.00137,rollb:33,rf:33,dtu:1.5,extDD:[25.44,1.21143]},
+ {key:'samus',name:'Samus',dx:8,dy:22,du:1.8,dv:1.4,da:0.12,t:0.06,maxwalk:1.0,j:3,rollf:39.60114,rollb:39.59885,rf:46,dtu:1.86,extDD:[22.94,1.09238]},
+ {key:'ganon',name:'Ganondorf',dx:15,dy:28,du:1.35,dv:1.35,da:0.09,t:0.07,maxwalk:0.73,j:6,rollf:37.80104,rollb:37.70296,rf:33,dtu:1.3,extDD:[24.77,1.17952]},
+ {key:'luigi',name:'Luigi',dx:10,dy:21,du:1.34,dv:1.34,da:0.08,t:0.025,maxwalk:1.1,j:4,rollf:37.50156,rollb:37.5,rf:33,dtu:1.3,extDD:[24.1975,1.15226]},
+ {key:'ylink',name:'Young Link',dx:12,dy:30,du:1.72,dv:1.6,da:0.12,t:0.08,maxwalk:1.2,j:4,rollf:28.84717,rollb:28.8,rf:39,dtu:1.8,extDD:[27.84,1.32571]},
+ {key:'link',name:'Link',dx:12,dy:30,du:1.3,dv:1.3,da:0.12,t:0.1,maxwalk:1.2,j:6,rollf:36.65994,rollb:36.6,rf:39,dtu:1.3,extDD:[21.15,1.00714]},
+ {key:'dk',name:'Donkey Kong',dx:15,dy:30,du:1.6,dv:1.6,da:0.07,t:0.08,maxwalk:1.2,j:5,rollf:38.4725,rollb:34.99518,rf:33,dtu:1.6,extDD:[29.40,1.40000]},
+ {key:'yoshi',name:'Yoshi',dx:13,dy:26,du:1.43,dv:1.6,da:0.1,t:0.06,maxwalk:1.15,j:5,rollf:31.31754,rollb:31.31937,rf:39,dtu:1.33,extDD:[28.165,1.34119]},
+ {key:'zelda',name:'Zelda',dx:15,dy:22,du:1.1,dv:1.1,da:0.12,t:0.1,maxwalk:0.7,j:6,rollf:33.21847,rollb:32.34975,rf:33,dtu:1.1,extDD:[19.50,0.92857]},
+ {key:'roy',name:'Roy',dx:15,dy:27,du:1.47,dv:1.61,da:0.07,t:0.06,maxwalk:1.2,j:5,rollf:37.7817,rollb:37.75116,rf:37,dtu:1.4,extDD:[28.83,1.37286]},
+ {key:'mewtwo',name:'Mewtwo',dx:18,dy:29,du:1.4,dv:1.4,da:0.1,t:0.04,maxwalk:1.0,j:5,rollf:51.96725,rollb:51.98896,rf:39,dtu:1.4,extDD:[26.78,1.27524]},
+ {key:'gnw',name:'Mr. G&W',dx:8,dy:17,du:1.5,dv:1.5,da:0.08,t:0.06,maxwalk:1.1,j:4,rollf:28.56,rollb:28.56,rf:37,dtu:1.5,extDD:[20.22,0.96286]},
+ {key:'ness',name:'Ness',dx:13,dy:25,du:1.36,dv:1.4,da:0.06,t:0.06,maxwalk:0.84,j:4,rollf:30.00653,rollb:35.02735,rf:33,dtu:1.3,extDD:[24.75,1.17857]},
+ {key:'bowser',name:'Bowser',dx:13,dy:29,du:1.06,dv:1.5,da:0.06,t:0.06,maxwalk:0.65,j:8,rollf:28.98,rollb:26.27791,rf:41,dtu:1.0,extDD:[23.39,1.11381]},
+ {key:'pichu',name:'Pichu',dx:13,dy:22,du:1.72,dv:1.72,da:0.1,t:0.1,maxwalk:1.24,j:3,rollf:40,rollb:38,rf:33,dtu:1.8,extDD:[30.19,1.43762]},
+ {key:'kirby',name:'Kirby',dx:12,dy:23,du:1.4,dv:1.4,da:0.1,t:0.08,maxwalk:0.85,j:3,rollf:32.20272,rollb:32.19508,rf:33,dtu:1.4,extDD:[23.93,1.13952]},
+];
+
+// ---------- engine: ported from the thread's Python formulas ----------
+function computeDash(c){
+  const {dx,du,dv,da,t}=c;
+  if(du===dv) return dv;
+  if(du>dv){
+    let zd=Math.min(Math.floor((du-dv)/t), dx-2);
+    let s=0; for(let n=0;n<=zd;n++) s+=du-t*n;
+    return (s+dv*(dx-zd-2))/(dx-1);
+  }else{
+    let zd=Math.min(Math.floor((dv-du)/da), dx-2);
+    let s=0; for(let n=0;n<=zd;n++) s+=du+da*n;
+    return (s+dv*(dx-zd-2))/(dx-1);
+  }
+}
+function computeFoxtrot(c){
+  const {dx,dy,du,dv,da,t}=c;
+  if(du===dv){
+    let s=0; for(let n=1;n<=dy-dx;n++) s+=dv-t*n;
+    return (s+dx*dv-t*(dy-dx))/dy;
+  }else if(dv>du){
+    let zf=Math.floor((dv-du)/da);
+    let s1=0; for(let n=0;n<=zf;n++) s1+=du+da*n;
+    let s2=0; for(let m=1;m<=dy-dx;m++) s2+=dv-t*m;
+    return (s1+s2+dv*(dx-zf-2)+dv-t*(dy-dx))/dy;
+  }else{
+    let zf=Math.floor((du-dv)/t);
+    if(zf<dx-2){
+      let s1=0; for(let n=0;n<=zf;n++) s1+=du-t*n;
+      let s2=0; for(let m=1;m<=dy-dx;m++) s2+=dv-t*m;
+      return (s1+s2+dv*(dx-zf-2)+dv-t*(dy-dx))/dy;
+    }else{
+      let s=0; for(let n=0;n<=dy-2;n++) s+=du-t*n;
+      return (s+du-t*(dy-2))/dy;
+    }
+  }
+}
+function computeWavedash(c){
+  const {t,maxwalk,j}=c;
+  const th=t*2;
+  const isSpecial=SPECIAL_WD.has(c.key);
+  const AV1=2.79000, AV2=2.67039, AV3=1.97283;
+
+  let z1=Math.min(Math.round((AV1-maxwalk)/th+0.5), 9);
+  let i1=AV1-z1*th;
+  let wd1;
+  if(z1>=9){
+    let s=0; for(let n=0;n<=z1;n++) s+=AV1-th*n;
+    wd1=s/10;
+  }else{
+    let s1=0; for(let n=0;n<=z1;n++) s1+=AV1-th*n;
+    let s2=0; for(let m=1;m<=9-z1;m++) s2+=i1-t*m;
+    wd1=(s1+s2)/10;
+  }
+
+  function angled(AV){
+    let z=Math.min(Math.round((AV-maxwalk)/th+0.5), 9+j);
+    let ival=AV-z*th;
+    let base=isSpecial?-0.5*AV:0;
+    let wd;
+    if(z>=9+j){
+      let s=base; for(let n=0;n<=z;n++) s+=AV-th*n;
+      wd=s;
+    }else{
+      let s1=base; for(let n=0;n<=z;n++) s1+=AV-th*n;
+      let s2=0; for(let m=1;m<=9+j-z;m++) s2+=ival-t*m;
+      wd=s1+s2;
+    }
+    return wd/(10+j);
+  }
+  return {perfectWaveland:wd1, maxAngle:angled(AV2), diagonalNotch:angled(AV3)};
+}
+function computeDashDance(c){
+  const {dx,du,dv,da,t,dtu}=c;
+  let vz;
+  if(du===dv) vz=dv;
+  else if(du>dv) vz=dv;
+  else { vz=du+da*(dx-2); if(vz>dv) vz=dv; }
+  let vx=-1*((vz/4)-t); if(vx>0) vx=0;
+  let dashdance, vy;
+  if((vx+dtu)>dv){
+    let z=Math.min(Math.floor((vx+dtu-dv)/t), dx-1);
+    vy=dv;
+    dashdance=0; for(let n=1;n<=z;n++) dashdance+=vx+dtu-t*n;
+    dashdance+=dv*(dx-z-1)+2*((vy/4)-t);
+  }else if((vx+dtu)<dv){
+    let z=Math.min(Math.floor((dv-vx-dtu)/da), dx-1);
+    vy=vx+dtu+da*(dx-1); if(vy>dv) vy=dv;
+    dashdance=0; for(let n=1;n<=z;n++) dashdance+=vx+dtu+da*n;
+    dashdance+=dv*(dx-z-1)+2*((vy/4)-t);
+  }else{
+    dashdance=dv*(dx-1)+2*((dv/4)-t);
+  }
+  return {length:dashdance, velocity:dashdance/(dx+1)};
+}
+function rollFwd(c){return c.rollf/c.rf;}
+function rollBwd(c){return c.rollb/c.rf;}
+
+// ---------- metric registry: every clickable property ----------
+const METRICS=[
+  {id:'maxwalk', section:'Walk & Run', label:'Max walk speed', unit:'Mm/f', dec:4, fn:c=>c.maxwalk},
+  {id:'runv', section:'Walk & Run', label:'Run velocity (= dv)', unit:'Mm/f', dec:4, fn:c=>c.dv},
+
+  {id:'du', section:'Dash', label:'Initial dash velocity (du)', unit:'', dec:4, fn:c=>c.du},
+  {id:'dv', section:'Dash', label:'Max dash velocity (dv)', unit:'', dec:4, fn:c=>c.dv},
+  {id:'da', section:'Dash', label:'Dash acceleration (da)', unit:'', dec:3, fn:c=>c.da},
+  {id:'dashAvg', section:'Dash', label:'Average dash velocity', unit:'Mm/f', dec:5, fn:c=>computeDash(c)},
+
+  {id:'dxFrames', section:'Foxtrot', label:'Dash frames before run (dx)', unit:'f', dec:0, fn:c=>c.dx},
+  {id:'dyFrames', section:'Foxtrot', label:'Max dash frames (dy)', unit:'f', dec:0, fn:c=>c.dy},
+  {id:'foxtrotAvg', section:'Foxtrot', label:'Average foxtrot velocity', unit:'Mm/f', dec:5, fn:c=>computeFoxtrot(c)},
+
+  {id:'perfectWL', section:'Wavedash', label:'Perfect waveland', unit:'Mm/f', dec:5, fn:c=>computeWavedash(c).perfectWaveland},
+  {id:'maxAngle', section:'Wavedash', label:'Max angle wavedash', unit:'Mm/f', dec:5, fn:c=>computeWavedash(c).maxAngle},
+  {id:'diagNotch', section:'Wavedash', label:'Diagonal notch wavedash', unit:'Mm/f', dec:5, fn:c=>computeWavedash(c).diagonalNotch},
+  {id:'tractionLow', section:'Wavedash', label:'Traction (low)', unit:'', dec:3, fn:c=>c.t},
+  {id:'tractionHigh', section:'Wavedash', label:'Traction (high)', unit:'', dec:3, fn:c=>c.t*2},
+  {id:'jumpsquat', section:'Wavedash', label:'Jumpsquat', unit:'f', dec:0, fn:c=>c.j},
+
+  {id:'ddLength', section:'Dash Dance', label:'Dash dance distance', unit:'Mm', dec:3, fn:c=>computeDashDance(c).length},
+  {id:'ddVel', section:'Dash Dance', label:'Average dash dance velocity', unit:'Mm/f', dec:5, fn:c=>computeDashDance(c).velocity},
+  {id:'dtu', section:'Dash Dance', label:'True initial velocity (dtu)', unit:'', dec:3, fn:c=>c.dtu},
+
+  {id:'extLength', section:'Extended Dash Dance', label:'20-frame distance', unit:'Mm', dec:3, fn:c=>c.extDD[0]},
+  {id:'extVel', section:'Extended Dash Dance', label:'Average velocity', unit:'Mm/f', dec:5, fn:c=>c.extDD[1]},
+
+  {id:'rollFwd', section:'Rolling', label:'Roll forward', unit:'Mm/f', dec:5, fn:c=>rollFwd(c)},
+  {id:'rollBwd', section:'Rolling', label:'Roll backward', unit:'Mm/f', dec:5, fn:c=>rollBwd(c)},
+  {id:'rollFrames', section:'Rolling', label:'Roll frames (incl. IASA)', unit:'f', dec:0, fn:c=>c.rf},
+];
+
+const SECTION_NOTES={
+  'Walk & Run':'Max walk speed is a hard cap; run velocity equals the character\'s maximum dash velocity.',
+  'Dash':'Average velocity across the dash\'s pre-run frames.',
+  'Foxtrot':'Tapping forward to stay in the dash animation instead of transitioning to run.',
+  'Wavedash':'Airdodge-into-ground velocity, averaged over 10 landing-lag frames (+ jumpsquat for angled wavedashes). Sheik, Marth, Link, DK, Roy and Bowser are corrected for non-standard airdodge trajectory.',
+  'Dash Dance':'One full turnaround cycle: dash out to the pre-run frame, pivot, and settle.',
+  'Extended Dash Dance':'Holding forward for the full pre-run window, then neutral for the rest of a 20-frame cycle. Sourced directly from the thread\'s published tables.',
+  'Rolling':'Total roll distance divided by total roll frames.',
+};
+
+// ---------- state ----------
+let selected='fox';
+let activeMetric='dashAvg';
+let pickerMode='character'; // 'character' | 'property'
+let chartTab='1'; // '1' = leaderboard, '2' = section radar chart (character tab only)
+
+function byKey(k){return CHAR_DATA.find(c=>c.key===k);}
+function fmt(n,d){return Number(n).toFixed(d);}
+function isMobile(){return window.matchMedia('(max-width:600px)').matches;}
+
+const SECTIONS=[...new Set(METRICS.map(m=>m.section))];
+const defaultActiveSection=(METRICS.find(m=>m.id===activeMetric)||{}).section;
+let collapsedSections=new Set(SECTIONS.filter(s=>s!==defaultActiveSection)); // character tab: only active group starts open
+let collapsedSectionsProperty=new Set(); // property tab: everything starts open
+
+function getCollapseSet(){ return pickerMode==='character' ? collapsedSections : collapsedSectionsProperty; }
+function setCollapseSet(newSet){
+  if(pickerMode==='character') collapsedSections=newSet;
+  else collapsedSectionsProperty=newSet;
+}
+
+function setActiveMetric(id){
+  activeMetric=id;
+  const m=METRICS.find(x=>x.id===id);
+  if(m) getCollapseSet().delete(m.section);
+}
+
+const RADAR_GROUPS=[
+  {label:'Walk & Run', sections:['Walk & Run']},
+  {label:'Dash', sections:['Dash']},
+  {label:'Foxtrot', sections:['Foxtrot']},
+  {label:'Wavedash', sections:['Wavedash']},
+  {label:'Dash Dance', sections:['Dash Dance','Extended Dash Dance']},
+  {label:'Rolling', sections:['Rolling']},
+];
+const GRADE_SCORE={S:6,A:5,B:4,C:3,D:2,F:1};
+function gradeFromRank(avgRank){
+  if(avgRank<=5) return 'S';
+  if(avgRank<=10) return 'A';
+  if(avgRank<=15) return 'B';
+  if(avgRank<=20) return 'C';
+  if(avgRank<=25) return 'D';
+  return 'F';
+}
+
+function rankOf(charKey, metric){
+  const sorted=CHAR_DATA.map(x=>({key:x.key,v:metric.fn(x)})).sort((a,b)=>b.v-a.v);
+  let rank=1;
+  for(let i=0;i<sorted.length;i++){
+    if(i>0 && Math.abs(sorted[i].v-sorted[i-1].v)>=1e-9) rank=i+1;
+    if(sorted[i].key===charKey) return {rank, value:sorted[i].v};
+  }
+}
+
+function rankedRows(metric){
+  const sorted=CHAR_DATA.map(c=>({c,v:metric.fn(c)})).sort((a,b)=>b.v-a.v);
+  let rank=1;
+  return sorted.map((r,i)=>{
+    if(i>0 && Math.abs(sorted[i].v-sorted[i-1].v)>=1e-9) rank=i+1;
+    return {...r, rank};
+  });
+}
+
+// cyan (great) -> amber/red (poor), subtle gradient by percentile
+function heatHue(p){ return 140-140*p; } // 0 -> green(140), 1 -> red(0)
+function rankHue(rank, total=26){
+  const p=(rank-1)/(total-1);
+  return heatHue(p);
+}
+
+function buildSectionsHTML(c){
+  const collapsible = isMobile();
+  const cset = getCollapseSet();
+
+  const groups=[];
+  METRICS.forEach(m=>{
+    let g=groups.find(g=>g.section===m.section);
+    if(!g){ g={section:m.section, metrics:[]}; groups.push(g); }
+    g.metrics.push(m);
+  });
+
+  let html='';
+
+  if(collapsible){
+    const allExpanded=SECTIONS.every(s=>!cset.has(s));
+    html+=`<div class="tree-toggle-all" id="toggleAllSections">${allExpanded?'Collapse all':'Expand all'}</div>`;
+  }
+
+  groups.forEach(g=>{
+    const isCollapsed=collapsible && cset.has(g.section);
+
+    if(collapsible){
+      html+=`<div class="section-label collapsible" data-section="${g.section}">
+        <span>${g.section}</span><span class="chevron">${isCollapsed?'▸':'▾'}</span>
+      </div>`;
+    }else{
+      html+=`<div class="section-label">${g.section}</div>`;
+    }
+    html+=`<div class="section-note"${isCollapsed?' style="display:none"':''}>${SECTION_NOTES[g.section]}</div>`;
+
+    html+=`<div class="section-body${collapsible?' tree':''}"${isCollapsed?' style="display:none"':''}>`;
+    g.metrics.forEach(m=>{
+      const val=m.fn(c);
+      const {rank}=rankOf(c.key,m);
+      const hue=rankHue(rank);
+      const activeCls=m.id===activeMetric?' active':'';
+      html+=`<div class="metric${activeCls}" data-id="${m.id}">
+        <div class="k">${m.label}</div>
+        <div class="v">${val.toFixed(m.dec)}<span class="unit">${m.unit}</span><span class="rank-badge" style="color:hsl(${hue.toFixed(0)},50%,62%);border-color:hsla(${hue.toFixed(0)},50%,62%,.45)">#${rank}</span></div>
+      </div>`;
+    });
+    html+=`</div>`;
+  });
+  return html;
+}
+
+function renderPickerTabs(){
+  const t=document.getElementById('pickerTabs');
+  t.innerHTML=`
+    <button class="picker-tab${pickerMode==='character'?' active':''}" id="tabChar">Select Character</button>
+    <button class="picker-tab${pickerMode==='property'?' active':''}" id="tabProp">Select Property</button>
+  `;
+  document.getElementById('tabChar').onclick=()=>{pickerMode='character'; render();};
+  document.getElementById('tabProp').onclick=()=>{pickerMode='property'; render();};
+}
+
+function renderPickerBody(){
+  const body=document.getElementById('pickerBody');
+  if(pickerMode==='character'){
+    let html='<div class="char-grid">';
+    CHAR_DATA.forEach(c=>{
+      html+=`<button class="char-btn${c.key===selected?' active':''}" data-key="${c.key}">${c.name}</button>`;
+    });
+    html+='</div>';
+    body.innerHTML=html;
+    body.querySelectorAll('.char-btn').forEach(b=>{
+      b.onclick=()=>{selected=b.dataset.key; render();};
+    });
+  }else{
+    let html='<div class="char-grid">';
+    METRICS.forEach(m=>{
+      html+=`<button class="char-btn${m.id===activeMetric?' active':''}" data-id="${m.id}">${m.label}</button>`;
+    });
+    html+='</div>';
+    body.innerHTML=html;
+    body.querySelectorAll('.char-btn').forEach(b=>{
+      b.onclick=()=>{
+        activeMetric=b.dataset.id;
+        const scrollToChart=isMobile();
+        render();
+        if(scrollToChart){
+          requestAnimationFrame(()=>{
+            const panelEl=document.getElementById('panel');
+            const target=panelEl.querySelector('.lb-row.selected') || panelEl.querySelector('.chart-panel');
+            if(target) target.scrollIntoView({behavior:'smooth', block:'center'});
+          });
+        }
+      };
+    });
+  }
+}
+
+function firstMetricForGroup(label){
+  const grp=RADAR_GROUPS.find(g=>g.label===label);
+  if(!grp) return null;
+  return METRICS.find(m=>grp.sections.includes(m.section));
+}
+
+function sectionGrades(charKey){
+  return RADAR_GROUPS.map(g=>{
+    const ms=METRICS.filter(m=>g.sections.includes(m.section));
+    const ranks=ms.map(m=>rankOf(charKey,m).rank);
+    const avg=ranks.reduce((a,b)=>a+b,0)/ranks.length;
+    const grade=gradeFromRank(avg);
+    return {label:g.label, avg, grade, score:GRADE_SCORE[grade]};
+  });
+}
+
+function radarChartHTML(charKey, highlightLabel){
+  const c=byKey(charKey);
+  const data=sectionGrades(charKey);
+  const N=data.length;
+  const cx=175, cy=170, R=118;
+  const angle=i=>-Math.PI/2 + i*(2*Math.PI/N);
+  const pt=(i,r)=>{
+    const a=angle(i);
+    return [cx+r*Math.cos(a), cy+r*Math.sin(a)];
+  };
+
+  // grid rings for scores 1..6
+  let rings='';
+  for(let s=1;s<=6;s++){
+    const r=(s/6)*R;
+    const pts=data.map((_,i)=>pt(i,r).join(',')).join(' ');
+    rings+=`<polygon points="${pts}" fill="none" stroke="#232836" stroke-width="1"/>`;
+  }
+  // axis spokes (unaffected by selection)
+  let spokes='';
+  data.forEach((_,i)=>{
+    const [x,y]=pt(i,R);
+    spokes+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#232836" stroke-width="1"/>`;
+  });
+  // data polygon
+  const dataPts=data.map((d,i)=>pt(i,(d.score/6)*R).join(',')).join(' ');
+
+  // glow defs for the highlighted node
+  let defs='';
+  data.forEach((d,i)=>{
+    if(d.label!==highlightLabel) return;
+    const hue=heatHue((6-d.score)/5);
+    defs+=`<radialGradient id="nodeGlow${i}" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="hsl(${hue.toFixed(0)},85%,62%)" stop-opacity="0.85"/>
+      <stop offset="55%" stop-color="hsl(${hue.toFixed(0)},85%,55%)" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="hsl(${hue.toFixed(0)},85%,55%)" stop-opacity="0"/>
+    </radialGradient>`;
+  });
+
+  // axis labels + vertex dots, grouped per-axis into clickable nodes
+  let labels='';
+  let dots='';
+  data.forEach((d,i)=>{
+    const [lx,ly]=pt(i,R+26);
+    const [nx,ny]=pt(i,(d.score/6)*R);
+    const hue=heatHue((6-d.score)/5);
+    const hl=d.label===highlightLabel;
+    const labelSize=hl?12.5:10.5, labelWeight=hl?700:400, labelFill=hl?`hsl(${hue.toFixed(0)},70%,68%)`:'#6b7280';
+    const gradeSize=hl?17:13;
+
+    labels+=`<g class="radar-node" data-label="${d.label}">
+      <circle cx="${lx}" cy="${ly-4}" r="24" fill="transparent"/>
+      <text x="${lx}" y="${ly}" text-anchor="middle" dominant-baseline="middle"
+        font-family="JetBrains Mono, monospace" font-size="${labelSize}" font-weight="${labelWeight}" fill="${labelFill}">${d.label}</text>
+      <text x="${lx}" y="${ly+14}" text-anchor="middle" dominant-baseline="middle"
+        font-family="Space Grotesk, sans-serif" font-weight="700" font-size="${gradeSize}" fill="hsl(${hue.toFixed(0)},55%,60%)">${d.grade}</text>
+    </g>`;
+
+    if(hl){
+      dots+=`<g class="radar-node" data-label="${d.label}">
+        <circle cx="${nx}" cy="${ny}" r="15" fill="url(#nodeGlow${i})"/>
+        <circle cx="${nx}" cy="${ny}" r="6" fill="hsl(${hue.toFixed(0)},80%,60%)" stroke="#fff" stroke-width="1.5"/>
+      </g>`;
+    }else{
+      dots+=`<g class="radar-node" data-label="${d.label}">
+        <circle cx="${nx}" cy="${ny}" r="14" fill="transparent"/>
+        <circle class="radar-dot" cx="${nx}" cy="${ny}" r="3.5" fill="#ff3e6c"/>
+      </g>`;
+    }
+  });
+
+  const svg=`<svg viewBox="0 0 350 350" width="100%" style="max-width:400px;display:block;margin:0 auto;">
+    <defs>${defs}</defs>
+    ${rings}${spokes}
+    <polygon points="${dataPts}" fill="rgba(255,62,108,.16)" stroke="#ff3e6c" stroke-width="2"/>
+    ${dots}${labels}
+  </svg>`;
+
+  let rows='';
+  data.forEach(d=>{
+    const hue=heatHue((6-d.score)/5);
+    const hl=d.label===highlightLabel;
+    rows+=`<div class="stat-row radar-node${hl?' active':''}" data-label="${d.label}">
+      <div class="k">${d.label}</div>
+      <div class="v" style="color:hsl(${hue.toFixed(0)},55%,60%)">${d.grade}<span class="unit">avg rank ${d.avg.toFixed(1)}</span></div>
+    </div>`;
+  });
+
+  return `<div class="lb-title">${c.name} — grade by category</div>${svg}${rows}`;
+}
+
+function leaderboardHTML(metric, highlightKey){
+  const rows=rankedRows(metric);
+  const max=rows[0].v;
+  let html=`<div class="lb-title">${metric.label} — all characters</div>`;
+  rows.forEach(r=>{
+    const pct=Math.max(2,(r.v/max)*100);
+    const sel=r.c.key===highlightKey?' selected':'';
+    html+=`<div class="lb-row${sel}">
+      <div class="lb-rank">${r.rank}</div>
+      <div class="lb-name" data-key="${r.c.key}">${r.c.name}</div>
+      <div class="lb-bar-track"><div class="lb-bar" style="width:${pct}%"></div></div>
+      <div class="lb-val">${r.v.toFixed(metric.dec)}${metric.unit?' '+metric.unit:''}</div>
+    </div>`;
+  });
+  return html;
+}
+
+function render(){
+  renderPickerTabs();
+  renderPickerBody();
+  const c=byKey(selected);
+  const panel=document.getElementById('panel');
+  const activeMetricObj=METRICS.find(m=>m.id===activeMetric);
+  const sectionsHTML=buildSectionsHTML(c);
+  const mobile=isMobile();
+
+  const subtext = pickerMode==='property'
+    ? 'Currently highlighted in the ranking on the right. Click a leaderboard name — or the Character tab — to change it.'
+    : `Every property below is live-computed from ${c.name}'s constants, with its rank out of 26 shown alongside. Click any of them to rank the full cast.`;
+
+  let rightCol;
+  if(pickerMode==='character'){
+    const highlightLabel=(RADAR_GROUPS.find(g=>g.sections.includes(activeMetricObj.section))||{}).label;
+    const radarView=radarChartHTML(selected, highlightLabel);
+    const lbView=leaderboardHTML(activeMetricObj, selected);
+    // on mobile, tab 1 = radar, tab 2 = leaderboard; on desktop it's the reverse
+    const tab1View = mobile ? radarView : lbView;
+    const tab2View = mobile ? lbView : radarView;
+    rightCol=`<div class="chart-tabs">
+        <button class="chart-tab${chartTab==='1'?' active':''}" id="chartTab1">1</button>
+        <button class="chart-tab${chartTab==='2'?' active':''}" id="chartTab2">2</button>
+      </div>
+      ${chartTab==='1' ? tab1View : tab2View}`;
+  }else{
+    rightCol=leaderboardHTML(activeMetricObj, selected);
+  }
+
+  const infoBlock=`<div class="char-info-panel">
+      <div class="readout-title">${c.name}</div>
+      <div class="readout-sub">${subtext}</div>
+      ${sectionsHTML}
+    </div>`;
+  const chartBlock=`<div class="chart-panel">${rightCol}</div>`;
+
+  // on mobile, property view shows the chart before the character info panel
+  const gridClass = 'grid2 ' + (pickerMode==='property' ? 'prop-mobile' : 'char-mobile');
+  panel.innerHTML=`<div class="${gridClass}">${infoBlock}${chartBlock}</div>`;
+
+  if(pickerMode==='character'){
+    document.getElementById('chartTab1').onclick=()=>{chartTab='1'; render();};
+    document.getElementById('chartTab2').onclick=()=>{chartTab='2'; render();};
+    panel.querySelectorAll('.radar-node').forEach(el=>{
+      el.onclick=()=>{
+        const m=firstMetricForGroup(el.dataset.label);
+        if(!m) return;
+        const prevSection=(METRICS.find(x=>x.id===activeMetric)||{}).section;
+        const newSection=m.section;
+        const wasNewAlreadyOpen=!collapsedSections.has(newSection);
+        setActiveMetric(m.id); // expands newSection
+        if(!wasNewAlreadyOpen && prevSection && prevSection!==newSection){
+          collapsedSections.add(prevSection);
+        }
+        render();
+        if(isMobile()){
+          requestAnimationFrame(()=>{
+            const target=panel.querySelector(`.metric[data-id="${m.id}"]`);
+            if(target) target.scrollIntoView({behavior:'smooth', block:'center'});
+          });
+        }
+      };
+    });
+  }
+
+  panel.querySelectorAll('.section-label.collapsible').forEach(el=>{
+    el.onclick=()=>{
+      const sec=el.dataset.section;
+      const cset=getCollapseSet();
+      if(cset.has(sec)) cset.delete(sec);
+      else cset.add(sec);
+      render();
+    };
+  });
+  const toggleAllEl=document.getElementById('toggleAllSections');
+  if(toggleAllEl){
+    toggleAllEl.onclick=()=>{
+      const cset=getCollapseSet();
+      const allExpanded=SECTIONS.every(s=>!cset.has(s));
+      setCollapseSet(allExpanded ? new Set(SECTIONS) : new Set());
+      render();
+    };
+  }
+
+  panel.querySelectorAll('.metric').forEach(el=>{
+    el.onclick=()=>{
+      setActiveMetric(el.dataset.id);
+      const scrollToChart = pickerMode==='property' && isMobile();
+      render();
+      if(scrollToChart){
+        requestAnimationFrame(()=>{
+          const panelEl=document.getElementById('panel');
+          const target=panelEl.querySelector('.lb-row.selected') || panelEl.querySelector('.chart-panel');
+          if(target) target.scrollIntoView({behavior:'smooth', block:'center'});
+        });
+      }
+    };
+  });
+  panel.querySelectorAll('.lb-name').forEach(el=>{
+    el.onclick=()=>{
+      selected=el.dataset.key;
+      const scrollToInfo = pickerMode==='property' && isMobile();
+      render();
+      if(scrollToInfo){
+        requestAnimationFrame(()=>{
+          const target=panel.querySelector('.char-info-panel');
+          if(target) target.scrollIntoView({behavior:'smooth', block:'start'});
+        });
+      }
+    };
+  });
+}
+
+render();
+
+let _wasMobile=isMobile();
+window.addEventListener('resize', ()=>{
+  const nowMobile=isMobile();
+  if(nowMobile!==_wasMobile){ _wasMobile=nowMobile; render(); }
+});
+</script>
+</body>
+</html>
